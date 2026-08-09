@@ -855,76 +855,53 @@
             draw();
         }
 
-        // Standard, Fail-Proof Jalali <-> Gregorian Converter Algorithm
+        // Bulletproof Standard Jalali <-> Gregorian Converter Engine
         function gregorianToJalali(gy, gm, gd) {
             gy = parseInt(gy); gm = parseInt(gm); gd = parseInt(gd);
             var g_d_m = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
             var jy = (gy <= 1600) ? 0 : 979;
-            var gy2 = gy - ((gy <= 1600) ? 621 : 1600);
-            var leap = ((gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0)) ? 1 : 0;
-            if (leap) g_d_m[2] = 29;
-            
-            var dayCount = gd;
-            for (var i = 1; i < gm; i++) dayCount += g_d_m[i];
-            
-            var g_day_no = 365 * gy2 + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) + Math.floor((gy2 + 399) / 400) + dayCount - 1;
-            
-            var j_day_no = g_day_no - 79;
-            var j_np = Math.floor(j_day_no / 12053);
-            jy += 33 * j_np;
-            j_day_no %= 12053;
-            
-            var jy_temp = Math.floor(j_day_no / 1461);
-            jy += 4 * jy_temp;
-            j_day_no %= 1461;
-            
-            if (j_day_no >= 366) {
-                jy += Math.floor((j_day_no - 1) / 365);
-                j_day_no = (j_day_no - 1) % 365;
+            gy -= (gy <= 1600) ? 621 : 1600;
+            var gy2 = (gm > 2) ? (gy + 1) : gy;
+            var days = (365 * gy) + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) + Math.floor((gy2 + 399) / 400) - 80 + gd;
+            for (var i = 0; i < gm; ++i) days += g_d_m[i];
+            jy += 33 * Math.floor(days / 12053);
+            days %= 12053;
+            jy += 4 * Math.floor(days / 1461);
+            days %= 1461;
+            if (days > 365) {
+                jy += Math.floor((days - 1) / 365);
+                days = (days - 1) % 365;
             }
-            
-            var jm = (j_day_no < 186) ? 1 + Math.floor(j_day_no / 31) : 7 + Math.floor((j_day_no - 186) / 30);
-            var jd = 1 + ((j_day_no < 186) ? (j_day_no % 31) : ((j_day_no - 186) % 30));
+            var jm = (days < 186) ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
+            var jd = 1 + ((days < 186) ? (days % 31) : ((days - 186) % 30));
             return [jy, jm, jd];
         }
 
         function jalaliToGregorian(jy, jm, jd) {
             jy = parseInt(jy); jm = parseInt(jm); jd = parseInt(jd);
-            var sal_a = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
             var gy = (jy <= 979) ? 621 : 1600;
-            var jy2 = jy - ((jy <= 979) ? 0 : 979);
-            
-            var j_day_no = (365 * jy2) + (Math.floor(jy2 / 33) * 8) + Math.floor(((jy2 % 33) + 3) / 4)
-                        + 78 + jd + ((jm < 7) ? (jm - 1) * 31 : ((jm - 7) * 30) + 186);
-            var g_day_no = j_day_no + 1600 * 365 + Math.floor(1600 / 4) - Math.floor(1600 / 100) + Math.floor(1600 / 400) - 80;
-            
-            var gy_add = 400 * Math.floor(g_day_no / 146097);
-            g_day_no %= 146097;
-            
-            var leap = true;
-            if (g_day_no >= 36525) {
-                g_day_no--;
-                gy_add += 100 * Math.floor(g_day_no / 36524);
-                g_day_no %= 36524;
-                if (g_day_no >= 365) g_day_no++;
-                else leap = false;
+            jy -= (jy <= 979) ? 0 : 979;
+            var days = (365 * jy) + Math.floor(jy / 33) * 8 + Math.floor(((jy % 33) + 3) / 4) + 78 + jd + ((jm < 7) ? (jm - 1) * 31 : ((jm - 7) * 30) + 186);
+            gy += 400 * Math.floor(days / 146097);
+            days %= 146097;
+            if (days > 36524) {
+                gy += 100 * Math.floor(--days / 36524);
+                days %= 36524;
+                if (days >= 365) days++;
             }
-            gy_add += 4 * Math.floor(g_day_no / 1461);
-            g_day_no %= 1461;
-            
-            if (g_day_no >= 366) {
-                leap = false;
-                g_day_no--;
-                gy_add += Math.floor(g_day_no / 365);
-                g_day_no %= 365;
+            gy += 4 * Math.floor(days / 1461);
+            days %= 1461;
+            if (days > 365) {
+                gy += Math.floor((days - 1) / 365);
+                days = (days - 1) % 365;
             }
-            gy += gy_add;
-            var gd = g_day_no + 1;
-            sal_a[2] = ((gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0)) ? 29 : 28;
+            var gd = days + 1;
+            var sal_a = [0, 31, ((gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
             var gm;
-            for (gm = 1; gm <= 12; gm++) {
-                if (gd <= sal_a[gm]) break;
-                gd -= sal_a[gm];
+            for (gm = 0; gm < 13; gm++) {
+                var v = sal_a[gm];
+                if (gd <= v) break;
+                gd -= v;
             }
             return new Date(gy, gm - 1, gd);
         }
@@ -986,6 +963,7 @@
             const now = new Date();
             const currentJalali = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
 
+            yearSelect.innerHTML = '';
             for (let y = 1398; y <= 1408; y++) {
                 const opt = document.createElement('option');
                 opt.value = y; opt.textContent = y;
@@ -993,6 +971,7 @@
                 yearSelect.appendChild(opt);
             }
 
+            daySelect.innerHTML = '';
             for (let d = 1; d <= 31; d++) {
                 const opt = document.createElement('option');
                 opt.value = d; opt.textContent = d;
@@ -1471,8 +1450,8 @@
             if (saved) {
                 try {
                     const d = JSON.parse(saved);
-                    // Self-healing check for broken year formats from previous version
-                    if (d.sy && d.sy >= 1390 && d.sy <= 1410) {
+                    // Validate data year to heal corrupted previous storage
+                    if (d.sy && d.sy >= 1390 && d.sy <= 1420) {
                         document.getElementById('startYear').value = d.sy;
                         if (d.sm) document.getElementById('startMonth').value = d.sm;
                         if (d.sd) document.getElementById('startDay').value = d.sd;
@@ -1485,6 +1464,9 @@
                 } catch (e) {}
             }
             
+            // Clean legacy bad storage
+            localStorage.removeItem('khadmat_v2_data');
+
             // Default: 6 months ago initial state
             const now = new Date();
             const past6M = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
@@ -1523,5 +1505,4 @@
     </script>
 </body>
 </html>
-
 
