@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پادگان دیجیتال | سامانه روزشمار و مدیریت خدمت سربازی</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vazirmatn Persian Font -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <!-- html2canvas for Exporting Story Card -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tactical: {
+                            base: '#060a12',
+                            card: '#0f172a',
+                            border: '#1e293b',
+                            emerald: '#10b981',
+                            gold: '#f59e0b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #060a12;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card-glow {
+            box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.18);
+        }
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.6s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #060a12; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+        
+        #radarCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.12;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-white pb-10 relative">
+
+    <!-- Background Radar Canvas -->
+    <canvas id="radarCanvas"></canvas>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-bold px-5 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-4">
+        <i data-lucide="check-circle" class="w-4 h-4"></i>
+        <span id="toastMsg">اطلاعات با موفقیت بروزرسانی شد</span>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="w-full glass-card sticky top-0 z-50 border-b border-slate-800 px-4 py-3 shadow-2xl">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-amber-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                        <i data-lucide="shield" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="font-black text-lg md:text-xl text-emerald-400 tracking-tight">پادگان دیجیتال</h1>
+                            <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">سامانه جامع</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400">مدیریت دقیق زمان، مرخصی و محاسبات خدمت سربازی</p>
+                    </div>
+                </div>
+
+                <!-- Mobile Share Button -->
+                <div class="flex md:hidden items-center gap-1.5">
+                    <button onclick="openShareModal()" class="p-2.5 bg-emerald-600/20 text-emerald-400 rounded-xl border border-emerald-500/30 text-xs">
+                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Global Action Controls (Desktop) -->
+            <div class="hidden md:flex items-center gap-2">
+                <button onclick="openShareModal()" class="px-3.5 py-2 text-xs bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/10">
+                    <i data-lucide="share-2" class="w-4 h-4"></i>
+                    <span>کارت استوری</span>
+                </button>
+                <button onclick="exportDataJSON()" class="px-3.5 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl transition-all flex items-center gap-2" title="پشتیبان‌گیری">
+                    <i data-lucide="download" class="w-4 h-4 text-amber-400"></i>
+                    <span>پشتیبان</span>
+                </button>
+                <label class="px-3.5 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl transition-all flex items-center gap-2 cursor-pointer" title="بازیابی">
+                    <i data-lucide="upload" class="w-4 h-4 text-blue-400"></i>
+                    <span>بازیابی</span>
+                    <input type="file" id="importFile" onchange="importDataJSON(event)" class="hidden">
+                </label>
+                <button onclick="resetData()" class="px-3.5 py-2 text-xs bg-rose-950/30 hover:bg-rose-900/50 text-rose-300 border border-rose-800/40 rounded-xl transition-all flex items-center gap-2" title="بازنشانی">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>بازنشانی</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs Bar -->
+        <div class="max-w-6xl mx-auto mt-3 pt-2 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="pie-chart" class="w-4 h-4"></i>
+                <span>داشبورد زنده</span>
+            </button>
+            <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-3.5 py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="sliders" class="w-4 h-4"></i>
+                <span>تنظیمات خدمت</span>
+            </button>
+            <button onclick="switchTab('leave')" id="tab-leave" class="tab-btn px-3.5 py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="plane-departure" class="w-4 h-4"></i>
+                <span>مرخصی‌شمار</span>
+            </button>
+            <button onclick="switchTab('guard')" id="tab-guard" class="tab-btn px-3.5 py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                <span>شیفت نگهبانی</span>
+            </button>
+            <button onclick="switchTab('gear')" id="tab-gear" class="tab-btn px-3.5 py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="package" class="w-4 h-4"></i>
+                <span>چک‌لیست وسایل</span>
+            </button>
+            <button onclick="switchTab('diary')" id="tab-diary" class="tab-btn px-3.5 py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="book-marked" class="w-4 h-4"></i>
+                <span>دفترچه خاطرات</span>
+            </button>
+            <button onclick="switchTab('ranks')" id="tab-ranks" class="tab-btn px-3.5 py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="award" class="w-4 h-4"></i>
+                <span>درجات و مدال‌ها</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main class="max-w-6xl mx-auto px-4 mt-6 w-full flex-grow relative z-10">
+
+        <!-- ================= TAB 1: LIVE DASHBOARD ================= -->
+        <div id="view-dashboard" class="tab-view space-y-6">
+            
+            <!-- Top Hero Ring Banner -->
+            <div class="glass-card glass-card-glow rounded-3xl p-6 md:p-8 relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    
+                    <!-- Circular Progress Ring -->
+                    <div class="lg:col-span-5 flex flex-col items-center justify-center">
+                        <div class="relative flex items-center justify-center">
+                            <svg class="w-60 h-60 sm:w-68 sm:h-68">
+                                <circle class="text-slate-800/80" stroke-width="14" stroke="currentColor" fill="transparent" r="95" cx="120" cy="120" />
+                                <circle id="progressCircle" class="text-emerald-500 progress-ring-circle" stroke-width="14" stroke-dasharray="596.9" stroke-dashoffset="596.9" stroke-linecap="round" stroke="currentColor" fill="transparent" r="95" cx="120" cy="120" />
+                            </svg>
+                            <div class="absolute flex flex-col items-center justify-center text-center">
+                                <span id="percentText" class="text-4xl sm:text-5xl font-black text-white tracking-tight">0%</span>
+                                <span class="text-xs text-emerald-400 font-bold mt-1 bg-emerald-950/70 border border-emerald-500/30 px-3.5 py-1 rounded-full flex items-center gap-1.5">
+                                    <i data-lucide="target" class="w-3.5 h-3.5"></i>
+                                    <span>سپری شده</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Stats & Big Counter -->
+                    <div class="lg:col-span-7 flex flex-col justify-center text-center lg:text-right">
+                        
+                        <!-- Current Rank Tag -->
+                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold w-fit mx-auto lg:mx-0 mb-3 shadow-lg shadow-amber-500/5">
+                            <i data-lucide="award" class="w-4 h-4 text-amber-400"></i>
+                            <span id="rankTitle">درجه: سرباز صفر</span>
+                        </div>
+
+                        <h2 class="text-xs text-slate-400 font-semibold mb-1 flex items-center justify-center lg:justify-start gap-1.5">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+                            <span>زمان باقی‌مانده تا ترخیص و آزادی</span>
+                        </h2>
+                        <div id="daysLeftBig" class="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-200 to-amber-300 mb-4">
+                            -- روز
+                        </div>
+
+                        <!-- Live Real-Time Ticker Grid -->
+                        <div class="grid grid-cols-4 gap-2 sm:gap-3 bg-slate-900/90 p-3 sm:p-4 rounded-2xl border border-slate-800 text-center shadow-inner">
+                            <div>
+                                <div id="liveDays" class="text-base sm:text-2xl font-black text-slate-100">0</div>
+                                <div class="text-[10px] sm:text-xs text-slate-500 mt-0.5">روز</div>
+                            </div>
+                            <div>
+                                <div id="liveHours" class="text-base sm:text-2xl font-black text-slate-100">00</div>
+                                <div class="text-[10px] sm:text-xs text-slate-500 mt-0.5">ساعت</div>
+                            </div>
+                            <div>
+                                <div id="liveMins" class="text-base sm:text-2xl font-black text-slate-100">00</div>
+                                <div class="text-[10px] sm:text-xs text-slate-500 mt-0.5">دقیقه</div>
+                            </div>
+                            <div>
+                                <div id="liveSecs" class="text-base sm:text-2xl font-black text-emerald-400 animate-pulse">00</div>
+                                <div class="text-[10px] sm:text-xs text-emerald-500 mt-0.5">ثانیه</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Dates Grid Bar -->
+                <div class="mt-8 pt-6 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block mb-1 flex items-center justify-center gap-1">
+                            <i data-lucide="calendar" class="w-3 h-3 text-slate-400"></i>
+                            <span>تاریخ اعزام</span>
+                        </span>
+                        <span id="startDateDisp" class="text-xs sm:text-sm font-bold text-slate-200">----/--/--</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block mb-1 flex items-center justify-center gap-1">
+                            <i data-lucide="calendar-check" class="w-3 h-3 text-emerald-400"></i>
+                            <span>پایان خدمت (ترخیص)</span>
+                        </span>
+                        <span id="endDateDisp" class="text-xs sm:text-sm font-bold text-emerald-400">----/--/--</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block mb-1 flex items-center justify-center gap-1">
+                            <i data-lucide="hourglass" class="w-3 h-3 text-teal-400"></i>
+                            <span>روزهای رفته</span>
+                        </span>
+                        <span id="daysPassedDisp" class="text-xs sm:text-sm font-bold text-teal-300">0 روز</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block mb-1 flex items-center justify-center gap-1">
+                            <i data-lucide="bar-chart-3" class="w-3 h-3 text-amber-400"></i>
+                            <span>کل روزهای خدمت</span>
+                        </span>
+                        <span id="totalDaysDisp" class="text-xs sm:text-sm font-bold text-amber-300">0 روز</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Deep Military Analytics Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- Barracks Meals Remaining -->
+                <div class="glass-card rounded-2xl p-5 space-y-3">
+                    <div class="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                        <i data-lucide="utensils" class="w-4 h-4"></i>
+                        <span>وعده‌های غذایی مانده پادگان</span>
+                    </div>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
+                            <span class="text-slate-400">صبحانه‌های مانده:</span>
+                            <span id="mealsBreakfast" class="font-bold text-slate-200">۰ وعده</span>
+                        </div>
+                        <div class="flex justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
+                            <span class="text-slate-400">نهار/شام‌های مانده:</span>
+                            <span id="mealsLunch" class="font-bold text-amber-300">۰ وعده</span>
+                        </div>
+                        <div class="flex justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
+                            <span class="text-slate-400">تخمین ساعت نگهبانی مانده:</span>
+                            <span id="estGuardHours" class="font-bold text-rose-400">۰ ساعت</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equivalents Box -->
+                <div class="glass-card rounded-2xl p-5 space-y-3">
+                    <div class="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                        <span>معادل‌های زمان باقی‌مانده</span>
+                    </div>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
+                            <span class="text-slate-400">کل ساعت‌های باقی‌مانده:</span>
+                            <span id="equivHours" class="font-bold text-slate-200">۰ ساعت</span>
+                        </div>
+                        <div class="flex justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
+                            <span class="text-slate-400">جمعه‌های باقی‌مانده:</span>
+                            <span id="equivFridays" class="font-bold text-amber-300">۰ جمعه</span>
+                        </div>
+                        <div class="flex justify-between p-2.5 bg-slate-900/60 rounded-xl border border-slate-800">
+                            <span class="text-slate-400">هفته‌های باقی‌مانده:</span>
+                            <span id="equivWeeks" class="font-bold text-teal-300">۰ هفته</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Motivational Quote -->
+                <div class="glass-card rounded-2xl p-5 flex flex-col justify-between space-y-3">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                                <i data-lucide="lightbulb" class="w-4 h-4 text-emerald-400"></i>
+                                <span>جمله انگیزشی روز سرباز</span>
+                            </span>
+                            <button onclick="setRandomQuote()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg border border-slate-700 flex items-center gap-1">
+                                <i data-lucide="shuffle" class="w-3 h-3"></i>
+                                <span>بعدی</span>
+                            </button>
+                        </div>
+                        <p id="quoteText" class="text-xs text-slate-300 leading-relaxed italic bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                            "این روزها هم می‌گذره و خاطره میشه. قوی باش رفیق!"
+                        </p>
+                    </div>
+                    <div class="text-[10px] text-slate-500 text-left">پادگان دیجیتال</div>
+                </div>
+            </div>
+
+            <!-- Service Milestones Progress -->
+            <div class="glass-card rounded-2xl p-6">
+                <h3 class="text-sm font-bold text-slate-200 mb-5 flex items-center gap-2">
+                    <i data-lucide="flag" class="w-4 h-4 text-emerald-400"></i>
+                    <span>ایستگاه‌های اصلی و کلیدی خدمت سربازی</span>
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                        <div class="flex justify-between items-center text-xs mb-2">
+                            <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                                <i data-lucide="shield" class="w-3.5 h-3.5 text-amber-400"></i>
+                                <span>دوره آموزشی (۲ ماه)</span>
+                            </span>
+                            <span id="m1Status" class="text-amber-400 font-bold">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mb-2">
+                            <div id="m1Bar" class="bg-amber-500 h-full w-0 transition-all duration-700"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-400">پایان رژه، تیراندازی و تقسیمات یگان</p>
+                    </div>
+
+                    <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                        <div class="flex justify-between items-center text-xs mb-2">
+                            <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                                <i data-lucide="scale" class="w-3.5 h-3.5 text-blue-400"></i>
+                                <span>۵۰٪ خدمت (نیمه راه)</span>
+                            </span>
+                            <span id="m2Status" class="text-blue-400 font-bold">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mb-2">
+                            <div id="m2Bar" class="bg-blue-500 h-full w-0 transition-all duration-700"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-400">ورود به شیب سرپایینی و کهنه‌سربازی</p>
+                    </div>
+
+                    <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                        <div class="flex justify-between items-center text-xs mb-2">
+                            <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                                <i data-lucide="flame" class="w-3.5 h-3.5 text-rose-400"></i>
+                                <span>تک‌رقمی شدن (۹ روز آخر)</span>
+                            </span>
+                            <span id="m3Status" class="text-rose-400 font-bold">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mb-2">
+                            <div id="m3Bar" class="bg-rose-500 h-full w-0 transition-all duration-700"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-400">شمارش معکوس لحظه آزادی و تحویل تسویه</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ================= TAB 2: SETTINGS ================= -->
+        <div id="view-settings" class="tab-view space-y-6 hidden">
+            
+            <div class="glass-card rounded-2xl p-6">
+                <h3 class="text-base font-bold text-emerald-400 mb-6 pb-3 border-b border-slate-800 flex items-center justify-between">
+                    <span class="flex items-center gap-2">
+                        <i data-lucide="sliders" class="w-5 h-5"></i>
+                        <span>تنظیمات و ورود اطلاعات خدمت</span>
+                    </span>
+                    <span class="text-xs text-emerald-400 font-medium bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center gap-1">
+                        <i data-lucide="zap" class="w-3 h-3"></i>
+                        <span>اعمال ۱۰۰٪ زنده</span>
+                    </span>
+                </h3>
+
+                <form id="serviceForm" onsubmit="event.preventDefault(); calculateService(); showToast('اطلاعات با موفقیت اعمال شد');" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Date Selector -->
+                    <div class="space-y-3 md:col-span-2 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                        <label class="block text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                            <i data-lucide="calendar" class="w-4 h-4 text-emerald-400"></i>
+                            <span>تاریخ دقیق اعزام به خدمت (هجری شمسی)</span>
+                        </label>
+                        
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <span class="text-[10px] text-slate-400 block mb-1">سال اعزام</span>
+                                <select id="startYear" class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"></select>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-400 block mb-1">ماه اعزام</span>
+                                <select id="startMonth" class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none">
+                                    <option value="1">فروردین</option>
+                                    <option value="2">اردیبهشت</option>
+                                    <option value="3">خرداد</option>
+                                    <option value="4">تیر</option>
+                                    <option value="5">مرداد</option>
+                                    <option value="6">شهریور</option>
+                                    <option value="7">مهر</option>
+                                    <option value="8">آبان</option>
+                                    <option value="9">آذر</option>
+                                    <option value="10">دی</option>
+                                    <option value="11">بهمن</option>
+                                    <option value="12">اسفند</option>
+                                </select>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-400 block mb-1">روز اعزام</span>
+                                <select id="startDay" class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"></select>
+                            </div>
+                        </div>
+
+                        <!-- Presets -->
+                        <div class="flex items-center gap-2 pt-2 overflow-x-auto">
+                            <span class="text-[10px] text-slate-400 shrink-0">میانبر اعزام‌های معروف:</span>
+                            <button type="button" onclick="setPresetDate(1)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded-lg border border-slate-700 shrink-0">۱ فروردین</button>
+                            <button type="button" onclick="setPresetDate(4)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded-lg border border-slate-700 shrink-0">۱ تیر</button>
+                            <button type="button" onclick="setPresetDate(7)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded-lg border border-slate-700 shrink-0">۱ مهر</button>
+                            <button type="button" onclick="setPresetDate(10)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded-lg border border-slate-700 shrink-0">۱ دی</button>
+                            <button type="button" onclick="setPresetDate(12)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded-lg border border-slate-700 shrink-0">۱ اسفند</button>
+                        </div>
+                    </div>
+
+                    <!-- Base Duration -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="timer" class="w-4 h-4 text-emerald-400"></i>
+                            <span>مدت مصوب قانونی خدمت</span>
+                        </label>
+                        <select id="baseMonths" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none">
+                            <option value="21">۲۱ ماه (مناطق عادی و امریه شهری)</option>
+                            <option value="24">۲۴ ماه (دستگاه‌های غیرنظامی / امریه)</option>
+                            <option value="18">۱۸ ماه (مناطق محروم و بدآب‌وهوا)</option>
+                            <option value="15">۱۵ ماه (مناطق عملیاتی / مرزی درگیر)</option>
+                            <option value="12">۱۲ ماه (شرایط خاص قانونی)</option>
+                        </select>
+                    </div>
+
+                    <!-- Deductions -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="minus-circle" class="w-4 h-4 text-emerald-400"></i>
+                            <span>مجموع کسری خدمت (روز)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" id="deductionDays" value="0" min="0" max="730" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 pl-8 focus:border-emerald-500 focus:outline-none">
+                            <span class="absolute left-3 top-3 text-xs text-slate-500">روز</span>
+                        </div>
+                    </div>
+
+                    <!-- Extra Service -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="plus-circle" class="w-4 h-4 text-rose-400"></i>
+                            <span>مجموع اضافه خدمت (روز)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" id="extraDays" value="0" min="0" max="365" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 pl-8 focus:border-emerald-500 focus:outline-none">
+                            <span class="absolute left-3 top-3 text-xs text-slate-500">روز</span>
+                        </div>
+                    </div>
+
+                    <!-- Used Leave -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="sun" class="w-4 h-4 text-amber-400"></i>
+                            <span>مرخصی رفته تا الان (روز)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" id="usedLeaves" value="0" min="0" max="180" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 pl-8 focus:border-emerald-500 focus:outline-none">
+                            <span class="absolute left-3 top-3 text-xs text-slate-500">روز</span>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="md:col-span-2 pt-2">
+                        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="check-check" class="w-4 h-4"></i>
+                            <span>ثبت و اعمال محاسبات روی داشبورد</span>
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+
+        </div>
+
+
+        <!-- ================= TAB 3: VACATION & LEAVE PLANNER ================= -->
+        <div id="view-leave" class="tab-view space-y-6 hidden">
+            
+            <div class="glass-card rounded-2xl p-6">
+                <div class="flex items-center gap-3 mb-6 pb-3 border-b border-slate-800">
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                        <i data-lucide="plane-departure" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100">برنامه‌ریز و روزشمار مرخصی بعدی</h3>
+                        <p class="text-xs text-slate-400">تاریخ رفتن به مرخصی بعدی را تنظیم کنید تا زمان دقیق آزادی موقت محاسبه شود</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Next Leave Config -->
+                    <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-4">
+                        <h4 class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                            <i data-lucide="calendar-days" class="w-4 h-4"></i>
+                            <span>تنظیم تاریخ مرخصی شهری/شهریار بعدی</span>
+                        </h4>
+                        
+                        <div>
+                            <label class="block text-[11px] text-slate-300 mb-1">تاریخ شروع مرخصی بعدی (شمسی)</label>
+                            <input type="text" id="nextLeaveInput" placeholder="مثال: 1403/05/20" class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] text-slate-300 mb-1">تعداد روزهای مرخصی</label>
+                            <input type="number" id="nextLeaveDuration" value="5" min="1" max="30" class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none">
+                        </div>
+
+                        <button onclick="saveNextLeave()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                            <span>ثبت و محاسبه مرخصی</span>
+                        </button>
+                    </div>
+
+                    <!-- Leave Countdown Result -->
+                    <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-center text-center space-y-3">
+                        <span class="text-xs text-slate-400 flex items-center justify-center gap-1.5">
+                            <i data-lucide="home" class="w-4 h-4 text-amber-400"></i>
+                            <span>زمان مانده تا شروع مرخصی</span>
+                        </span>
+                        <div id="leaveCountdownBig" class="text-3xl font-black text-amber-400">
+                            تنظیم نشده
+                        </div>
+                        <p id="leaveSubText" class="text-[11px] text-slate-500">تاریخ مرخصی بعدی را در کادر روبرو وارد کنید</p>
+                    </div>
+                </div>
+
+                <!-- Overall Leave Entitlement Stats -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-800 pt-5">
+                    <div class="bg-slate-900/50 p-3 rounded-xl border border-slate-800 text-center">
+                        <span class="text-[10px] text-slate-400 block mb-1">کل مرخصی استحقاقی</span>
+                        <span id="leaveTotalEntitled" class="text-sm font-bold text-slate-200">۰ روز</span>
+                    </div>
+                    <div class="bg-slate-900/50 p-3 rounded-xl border border-slate-800 text-center">
+                        <span class="text-[10px] text-slate-400 block mb-1">مرخصی رفته تا الان</span>
+                        <span id="leaveUsedDisp" class="text-sm font-bold text-rose-400">۰ روز</span>
+                    </div>
+                    <div class="bg-slate-900/50 p-3 rounded-xl border border-slate-800 text-center">
+                        <span class="text-[10px] text-slate-400 block mb-1">طلب مرخصی مانده</span>
+                        <span id="leaveRemDisp" class="text-sm font-bold text-emerald-400">۰ روز</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ================= TAB 4: GUARD DUTY CALCULATOR ================= -->
+        <div id="view-guard" class="tab-view space-y-6 hidden">
+            
+            <div class="glass-card rounded-2xl p-6">
+                <div class="flex items-center gap-3 mb-6 pb-3 border-b border-slate-800">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                        <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100">محاسبه‌گر پیشرفته شیفت‌های نگهبانی (پاس‌ها)</h3>
+                        <p class="text-xs text-slate-400">جدول زمان‌بندی پاس اول، دوم و سوم و زمان‌های استراحت آنکادر را به دست آورید</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-2">ساعت شروع پاس نگهبانی</label>
+                        <input type="time" id="guardStartTime" value="20:00" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-2">مدت زمان پست (ساعت)</label>
+                        <select id="guardShiftHours" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none">
+                            <option value="2">۲ ساعت پست - ۴ ساعت استراحت</option>
+                            <option value="1.5">۱.۵ ساعت پست - ۳ ساعت استراحت</option>
+                            <option value="3">۳ ساعت پست - ۶ ساعت استراحت</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-2">تعداد پاس‌های کل</label>
+                        <input type="number" id="guardTotalShifts" value="3" min="1" max="6" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <button onclick="calculateGuardShifts()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
+                    <i data-lucide="calculator" class="w-4 h-4"></i>
+                    <span>محاسبه دقیق پاس‌ها و زمان استراحت</span>
+                </button>
+
+                <!-- Guard Table Results -->
+                <div id="guardResultBox" class="mt-6 hidden">
+                    <h4 class="text-xs font-bold text-slate-300 mb-3">جدول زمان‌بندی شیفت‌ها:</h4>
+                    <div id="guardTable" class="space-y-2"></div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ================= TAB 5: GEAR PACKING CHECKLIST ================= -->
+        <div id="view-gear" class="tab-view space-y-6 hidden">
+            
+            <div class="glass-card rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-lime-500/20 text-lime-400 flex items-center justify-center">
+                            <i data-lucide="package" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-100">چک‌لیست وسایل ضروری پادگان</h3>
+                            <p class="text-xs text-slate-400">لیست کامل وسایل دوره آموزشی و یگان | درصد آماده‌سازی کوله‌پشتی</p>
+                        </div>
+                    </div>
+                    <span id="gearProgressText" class="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 rounded-full">0٪ کامل شد</span>
+                </div>
+
+                <!-- Add New Item -->
+                <div class="flex gap-2 mb-6">
+                    <input type="text" id="newGearInput" placeholder="افزودن وسیله جدید (مثلاً: قفل کمد کوچک)..." class="flex-1 bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none">
+                    <button onclick="addGearItem()" class="px-5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shrink-0">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>افزودن</span>
+                    </button>
+                </div>
+
+                <!-- Checklist Container -->
+                <div id="gearListContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Dynamic items from JS -->
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ================= TAB 6: BARRACKS DIARY ================= -->
+        <div id="view-diary" class="tab-view space-y-6 hidden">
+            
+            <div class="glass-card rounded-2xl p-6">
+                <div class="flex items-center gap-3 mb-6 pb-3 border-b border-slate-800">
+                    <div class="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                        <i data-lucide="book-marked" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100">دفترچه خاطرات و یادداشت‌های برجک</h3>
+                        <p class="text-xs text-slate-400">ثبت خاطرات تلخ و شیرین پادگان، جملات روی دیوار برجک و رویدادها</p>
+                    </div>
+                </div>
+
+                <!-- Add Note Form -->
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 mb-6 space-y-3">
+                    <input type="text" id="noteTitle" placeholder="عنوان یادداشت (مثلا: پست برجک ۲ شب بارونی)..." class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none">
+                    <textarea id="noteContent" rows="3" placeholder="متن خاطره یا یادداشت خود را بنویسید..." class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"></textarea>
+                    
+                    <div class="flex justify-between items-center">
+                        <select id="noteCategory" class="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-xl px-3 py-2">
+                            <option value="خاطره">خاطره</option>
+                            <option value="مهم">رویداد مهم</option>
+                            <option value="دلنوشته">دلنوشته برجک</option>
+                            <option value="تلفن">شماره تلفن هم‌خدمتی</option>
+                        </select>
+                        <button onclick="saveNote()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            <span>ثبت خاطره</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Notes List -->
+                <div id="notesContainer" class="space-y-3"></div>
+            </div>
+
+        </div>
+
+
+        <!-- ================= TAB 7: RANKS & BADGES ================= -->
+        <div id="view-ranks" class="tab-view space-y-6 hidden">
+            
+            <div class="glass-card rounded-2xl p-6">
+                <div class="flex items-center gap-3 mb-6 pb-3 border-b border-slate-800">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                        <i data-lucide="award" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100">مسیر ترفیع درجه و مدال‌های افتخار</h3>
+                        <p class="text-xs text-slate-400">با افزایش درصد پیشرفت خدمت، درجه و مدال‌های جدید به صورت خودکار باز می‌شوند</p>
+                    </div>
+                </div>
+
+                <div id="badgesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+
+        </div>
+
+    </main>
+
+
+    <!-- Share Card Modal -->
+    <div id="shareModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card max-w-md w-full rounded-3xl p-6 border border-slate-700 relative shadow-2xl space-y-4">
+            <button onclick="closeShareModal()" class="absolute top-4 left-4 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            
+            <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+                <i data-lucide="camera" class="w-4 h-4"></i>
+                <span>کارت پستالی وضعیت خدمت برای استوری</span>
+            </h3>
+
+            <!-- Story Card View -->
+            <div id="shareCardContent" class="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 p-6 rounded-2xl border border-emerald-500/30 text-center space-y-4 relative overflow-hidden">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                    <i data-lucide="award" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div id="shareCardRank" class="text-xs font-bold text-amber-400">درجه: سرباز صفر</div>
+                    <div id="shareCardPercent" class="text-4xl font-black text-white mt-1">0%</div>
+                    <div class="text-[10px] text-emerald-400 mt-0.5">پیشرفت خدمت</div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">مانده تا ترخیص</span>
+                        <span id="shareCardDaysLeft" class="font-bold text-slate-200">0 روز</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">تاریخ آزادی</span>
+                        <span id="shareCardEndDate" class="font-bold text-teal-300">----/--/--</span>
+                    </div>
+                </div>
+                <p id="shareCardQuote" class="text-[11px] text-slate-400 italic">"این روزها هم می‌گذره..."</p>
+                <div class="text-[9px] text-slate-500">پادگان دیجیتال | خدمت‌شمار سربازی</div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="downloadShareCard()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span>دانلود تصویر</span>
+                </button>
+                <button onclick="copyShareText()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                    <span>کپی متن</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Footer -->
+    <footer class="text-center text-xs text-slate-400 mt-12 py-4 border-t border-slate-900 relative z-10 flex flex-col sm:flex-row items-center justify-center gap-2">
+        <span>گردآوری شده با عشق توسط</span>
+        <a href="https://t.me/hamixcore" target="_blank" rel="noopener noreferrer" class="text-emerald-400 font-bold hover:underline flex items-center gap-1 dir-ltr">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+            <span>t.me/hamixcore</span>
+        </a>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Global Calculation Cache Variables
+        let globalTargetEndDate = null;
+        let currentCalculatedData = {};
+
+        // Lucide Icons Helper Initializer
+        function refreshIcons() {
+            setTimeout(() => {
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            }, 50);
+        }
+
+        // Toast Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }, 2500);
+        }
+
+        // Background Radar Effect
+        function initRadarCanvas() {
+            const canvas = document.getElementById('radarCanvas');
+            const ctx = canvas.getContext('2d');
+            let angle = 0;
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                const radius = Math.max(canvas.width, canvas.height) * 0.6;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, angle, angle + 0.15);
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
+                ctx.fill();
+
+                angle += 0.005;
+                requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        // Standard, Fail-Proof Jalali <-> Gregorian Converter Algorithm
+        function gregorianToJalali(gy, gm, gd) {
+            gy = parseInt(gy); gm = parseInt(gm); gd = parseInt(gd);
+            var g_d_m = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            var jy = (gy <= 1600) ? 0 : 979;
+            var gy2 = gy - ((gy <= 1600) ? 621 : 1600);
+            var leap = ((gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0)) ? 1 : 0;
+            if (leap) g_d_m[2] = 29;
+            
+            var dayCount = gd;
+            for (var i = 1; i < gm; i++) dayCount += g_d_m[i];
+            
+            var g_day_no = 365 * gy2 + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) + Math.floor((gy2 + 399) / 400) + dayCount - 1;
+            
+            var j_day_no = g_day_no - 79;
+            var j_np = Math.floor(j_day_no / 12053);
+            jy += 33 * j_np;
+            j_day_no %= 12053;
+            
+            var jy_temp = Math.floor(j_day_no / 1461);
+            jy += 4 * jy_temp;
+            j_day_no %= 1461;
+            
+            if (j_day_no >= 366) {
+                jy += Math.floor((j_day_no - 1) / 365);
+                j_day_no = (j_day_no - 1) % 365;
+            }
+            
+            var jm = (j_day_no < 186) ? 1 + Math.floor(j_day_no / 31) : 7 + Math.floor((j_day_no - 186) / 30);
+            var jd = 1 + ((j_day_no < 186) ? (j_day_no % 31) : ((j_day_no - 186) % 30));
+            return [jy, jm, jd];
+        }
+
+        function jalaliToGregorian(jy, jm, jd) {
+            jy = parseInt(jy); jm = parseInt(jm); jd = parseInt(jd);
+            var sal_a = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            var gy = (jy <= 979) ? 621 : 1600;
+            var jy2 = jy - ((jy <= 979) ? 0 : 979);
+            
+            var j_day_no = (365 * jy2) + (Math.floor(jy2 / 33) * 8) + Math.floor(((jy2 % 33) + 3) / 4)
+                        + 78 + jd + ((jm < 7) ? (jm - 1) * 31 : ((jm - 7) * 30) + 186);
+            var g_day_no = j_day_no + 1600 * 365 + Math.floor(1600 / 4) - Math.floor(1600 / 100) + Math.floor(1600 / 400) - 80;
+            
+            var gy_add = 400 * Math.floor(g_day_no / 146097);
+            g_day_no %= 146097;
+            
+            var leap = true;
+            if (g_day_no >= 36525) {
+                g_day_no--;
+                gy_add += 100 * Math.floor(g_day_no / 36524);
+                g_day_no %= 36524;
+                if (g_day_no >= 365) g_day_no++;
+                else leap = false;
+            }
+            gy_add += 4 * Math.floor(g_day_no / 1461);
+            g_day_no %= 1461;
+            
+            if (g_day_no >= 366) {
+                leap = false;
+                g_day_no--;
+                gy_add += Math.floor(g_day_no / 365);
+                g_day_no %= 365;
+            }
+            gy += gy_add;
+            var gd = g_day_no + 1;
+            sal_a[2] = ((gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0)) ? 29 : 28;
+            var gm;
+            for (gm = 1; gm <= 12; gm++) {
+                if (gd <= sal_a[gm]) break;
+                gd -= sal_a[gm];
+            }
+            return new Date(gy, gm - 1, gd);
+        }
+
+        function formatJalali(dateObj) {
+            const j = gregorianToJalali(dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate());
+            return `${j[0]}/${j[1] < 10 ? '0' + j[1] : j[1]}/${j[2] < 10 ? '0' + j[2] : j[2]}`;
+        }
+
+        // Quotes
+        const quotes = [
+            "پوتین‌ها رو محکم ببند، این راه رو خیلیا رفتن و تموم شده!",
+            "هیچ شبی تا ابد نمی‌مونه، خورشید آزادی در راهه!",
+            "سربازی مرد می‌سازه، اما صبوری ارزشش رو چند برابر می‌کنه.",
+            "روزها شاید کند بگذره، اما هفته‌ها و ماه‌ها مثل برق می‌گذرن!",
+            "سلامتی همه سربازا، سلامتی برجک‌ها و پست‌های نصفه‌شب!",
+            "هر روزی که می‌گذره، یک قدم به آغوش خانواده و آرزوهات نزدیک‌تر می‌شی!"
+        ];
+
+        // Ranks Data
+        const badgesData = [
+            { id: 1, minPct: 0, title: 'پوتین‌پوش', desc: 'شروع رسمی دوران مقدس سربازی' },
+            { id: 2, minPct: 10, title: 'پایان آموزشی', desc: 'عبور موفقیت‌آمیز از دوره آموزشی' },
+            { id: 3, minPct: 25, title: 'سرباز یکم', desc: 'سپری کردن ربع اول (۲۵٪) خدمت' },
+            { id: 4, minPct: 50, title: 'نیمه‌راه', desc: 'رسیدن به نقطه طلایی ۵۰ درصد' },
+            { id: 5, minPct: 75, title: 'پاسبخش ارشد', desc: 'گذشتن از ۷۵٪ راه و کهنه‌سرباز شدن' },
+            { id: 6, minPct: 90, title: 'بی‌پست و فرمانده', desc: 'رسیدن به ۹۰٪ خدمت و کم‌شدن فشار پست‌ها' },
+            { id: 7, minPct: 98, title: 'تک‌رقمی', desc: 'کمتر از ۱۰ روز تا پایان خدمت' },
+            { id: 8, minPct: 100, title: 'آزادی مطلق', desc: 'تسویه حساب نهایی و دریافت کارت پایان خدمت' }
+        ];
+
+        // Default Gear List
+        const defaultGear = [
+            { id: 1, text: 'سوزن و نخ مشکی/سبز', done: true },
+            { id: 2, text: 'قفل کمد کوچک و کلید', done: true },
+            { id: 3, text: 'کرم مرطوب‌کننده و ضدآفتاب', done: false },
+            { id: 4, text: 'کش گت شلوار پوتین', done: false },
+            { id: 5, text: 'ناخنگیر و ژیلت', done: false },
+            { id: 6, text: 'چسب زخم و داروهای عمومی', done: false },
+            { id: 7, text: 'دفترچه یادداشت کوچک و خودکار', done: false },
+            { id: 8, text: 'جوراب مشکی ضخیم (۳ جفت)', done: false }
+        ];
+
+        // Tabs Swapping
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            refreshIcons();
+        }
+
+        // Initialize Form Options & Listeners
+        function initSelectors() {
+            const yearSelect = document.getElementById('startYear');
+            const daySelect = document.getElementById('startDay');
+            
+            const now = new Date();
+            const currentJalali = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+
+            for (let y = 1398; y <= 1408; y++) {
+                const opt = document.createElement('option');
+                opt.value = y; opt.textContent = y;
+                if (y === currentJalali[0]) opt.selected = true;
+                yearSelect.appendChild(opt);
+            }
+
+            for (let d = 1; d <= 31; d++) {
+                const opt = document.createElement('option');
+                opt.value = d; opt.textContent = d;
+                if (d === 1) opt.selected = true;
+                daySelect.appendChild(opt);
+            }
+
+            document.getElementById('startMonth').value = currentJalali[1];
+
+            // Bind reactive real-time recalculation
+            const settingInputIds = ['startYear', 'startMonth', 'startDay', 'baseMonths', 'extraDays', 'deductionDays', 'usedLeaves'];
+            settingInputIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', calculateService);
+                    el.addEventListener('change', calculateService);
+                }
+            });
+        }
+
+        function setPresetDate(m) {
+            document.getElementById('startMonth').value = m;
+            document.getElementById('startDay').value = 1;
+            calculateService();
+            showToast('تاریخ پیش‌فرض اعمال شد');
+        }
+
+        function addMonths(date, months) {
+            let d = new Date(date.getTime());
+            d.setMonth(d.getMonth() + months);
+            return d;
+        }
+
+        // Main Primary Service Calculation Engine
+        function calculateService() {
+            const sy = parseInt(document.getElementById('startYear').value) || 1402;
+            const sm = parseInt(document.getElementById('startMonth').value) || 1;
+            const sd = parseInt(document.getElementById('startDay').value) || 1;
+
+            const baseMonths = parseInt(document.getElementById('baseMonths').value) || 21;
+            const extraDays = parseInt(document.getElementById('extraDays').value) || 0;
+            const deductionDays = parseInt(document.getElementById('deductionDays').value) || 0;
+            const usedLeaves = parseInt(document.getElementById('usedLeaves').value) || 0;
+
+            const startDate = jalaliToGregorian(sy, sm, sd);
+            let rawEndDate = addMonths(startDate, baseMonths);
+
+            const netAdjustmentDays = extraDays - deductionDays;
+            let finalEndDate = new Date(rawEndDate.getTime() + (netAdjustmentDays * 24 * 60 * 60 * 1000));
+            globalTargetEndDate = finalEndDate;
+
+            const now = new Date();
+            const totalMs = finalEndDate.getTime() - startDate.getTime();
+            const totalDays = Math.max(1, Math.round(totalMs / (1000 * 60 * 60 * 24)));
+
+            const passedMs = now.getTime() - startDate.getTime();
+            let passedDays = Math.floor(passedMs / (1000 * 60 * 60 * 24));
+            if (passedDays < 0) passedDays = 0;
+            if (passedDays > totalDays) passedDays = totalDays;
+
+            let daysLeft = totalDays - passedDays;
+            if (daysLeft < 0) daysLeft = 0;
+
+            let percentage = ((passedDays / totalDays) * 100).toFixed(1);
+            if (percentage > 100) percentage = 100;
+            if (percentage < 0) percentage = 0;
+
+            // Immediate Dashboard UI Sync
+            document.getElementById('percentText').textContent = `${percentage}%`;
+            document.getElementById('daysLeftBig').textContent = `${daysLeft.toLocaleString('fa-IR')} روز`;
+
+            document.getElementById('startDateDisp').textContent = formatJalali(startDate);
+            document.getElementById('endDateDisp').textContent = formatJalali(finalEndDate);
+            document.getElementById('daysPassedDisp').textContent = `${passedDays.toLocaleString('fa-IR')} روز`;
+            document.getElementById('totalDaysDisp').textContent = `${totalDays.toLocaleString('fa-IR')} روز`;
+
+            // Actual Calendar Fridays Count
+            const remFridays = Math.floor(daysLeft / 7);
+            document.getElementById('equivFridays').textContent = `${remFridays.toLocaleString('fa-IR')} جمعه`;
+
+            // Equivalents & Meals
+            const remWeeks = Math.floor(daysLeft / 7);
+            document.getElementById('equivWeeks').textContent = `${remWeeks.toLocaleString('fa-IR')} هفته`;
+
+            document.getElementById('mealsBreakfast').textContent = `${daysLeft.toLocaleString('fa-IR')} وعده`;
+            document.getElementById('mealsLunch').textContent = `${(daysLeft * 2).toLocaleString('fa-IR')} وعده`;
+            document.getElementById('estGuardHours').textContent = `${Math.round(daysLeft * 1.5).toLocaleString('fa-IR')} ساعت`;
+
+            // Leave stats
+            const totalEntitledLeave = Math.round(baseMonths * 2.5);
+            const remLeave = totalEntitledLeave - usedLeaves;
+
+            document.getElementById('leaveTotalEntitled').textContent = `${totalEntitledLeave} روز`;
+            document.getElementById('leaveUsedDisp').textContent = `${usedLeaves} روز`;
+            document.getElementById('leaveRemDisp').textContent = `${remLeave >= 0 ? remLeave : 0} روز`;
+
+            // SVG Progress Ring Offset
+            const circle = document.getElementById('progressCircle');
+            const circumference = 2 * Math.PI * 95;
+            const offset = circumference - (percentage / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+
+            // Ranks & Milestones
+            updateRank(percentage);
+            updateMilestones(passedDays, totalDays, daysLeft);
+            renderBadges(percentage);
+
+            currentCalculatedData = { percentage, daysLeft, finalEndDate, passedDays, totalDays };
+
+            // Save state
+            saveState({ sy, sm, sd, baseMonths, extraDays, deductionDays, usedLeaves });
+
+            // Trigger live second tick refresh immediately
+            updateLiveClock();
+        }
+
+        // Live Real-Time Millisecond Clock Loop
+        function updateLiveClock() {
+            const now = new Date();
+
+            if (globalTargetEndDate) {
+                const diffMs = globalTargetEndDate.getTime() - now.getTime();
+
+                if (diffMs > 0) {
+                    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    const secs = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+                    document.getElementById('liveDays').textContent = days.toLocaleString('fa-IR');
+                    document.getElementById('liveHours').textContent = hours < 10 ? '0' + hours : hours;
+                    document.getElementById('liveMins').textContent = mins < 10 ? '0' + mins : mins;
+                    document.getElementById('liveSecs').textContent = secs < 10 ? '0' + secs : secs;
+
+                    const totalHoursLeft = Math.floor(diffMs / (1000 * 60 * 60));
+                    document.getElementById('equivHours').textContent = `${totalHoursLeft.toLocaleString('fa-IR')} ساعت`;
+                } else {
+                    document.getElementById('liveDays').textContent = '0';
+                    document.getElementById('liveHours').textContent = '00';
+                    document.getElementById('liveMins').textContent = '00';
+                    document.getElementById('liveSecs').textContent = '00';
+                    document.getElementById('daysLeftBig').textContent = 'پایان خدمت';
+                }
+            }
+
+            updateNextLeaveTicker();
+        }
+
+        function updateRank(percent) {
+            const titleEl = document.getElementById('rankTitle');
+
+            if (percent < 10) { titleEl.textContent = 'درجه: سرباز صفر'; }
+            else if (percent < 25) { titleEl.textContent = 'درجه: سرباز یکم'; }
+            else if (percent < 45) { titleEl.textContent = 'درجه: سرگروهبان'; }
+            else if (percent < 70) { titleEl.textContent = 'درجه: استوار دوم'; }
+            else if (percent < 90) { titleEl.textContent = 'درجه: ستوان سوم'; }
+            else if (percent < 100) { titleEl.textContent = 'درجه: جناب سروان'; }
+            else { titleEl.textContent = 'درجه: امیر / ترخیص شده'; }
+        }
+
+        function updateMilestones(passedDays, totalDays, daysLeft) {
+            const m1Pct = Math.min(100, Math.max(0, (passedDays / 60) * 100)).toFixed(0);
+            document.getElementById('m1Bar').style.width = `${m1Pct}%`;
+            document.getElementById('m1Status').textContent = `${m1Pct}%`;
+
+            const halfDays = Math.round(totalDays / 2);
+            const m2Pct = Math.min(100, Math.max(0, (passedDays / halfDays) * 100)).toFixed(0);
+            document.getElementById('m2Bar').style.width = `${m2Pct}%`;
+            document.getElementById('m2Status').textContent = `${m2Pct}%`;
+
+            let m3Pct = daysLeft <= 9 ? Math.round(((10 - daysLeft) / 10) * 100) : 0;
+            document.getElementById('m3Bar').style.width = `${m3Pct}%`;
+            document.getElementById('m3Status').textContent = daysLeft <= 9 ? `${daysLeft} روز مانده` : '0%';
+        }
+
+        function renderBadges(currentPct) {
+            const container = document.getElementById('badgesGrid');
+            container.innerHTML = '';
+
+            badgesData.forEach(badge => {
+                const isUnlocked = currentPct >= badge.minPct;
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-2xl border transition-all ${
+                    isUnlocked 
+                    ? 'bg-slate-900/80 border-emerald-500/40 text-slate-100 shadow-lg shadow-emerald-500/5' 
+                    : 'bg-slate-950/40 border-slate-800/80 text-slate-600 opacity-60'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-xs flex items-center gap-1.5 ${isUnlocked ? 'text-amber-300' : 'text-slate-500'}">
+                            <i data-lucide="${isUnlocked ? 'award' : 'lock'}" class="w-4 h-4"></i>
+                            <span>${badge.title}</span>
+                        </span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full ${isUnlocked ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'}">
+                            ${isUnlocked ? 'دریافت شده' : `نیازمند ${badge.minPct}٪`}
+                        </span>
+                    </div>
+                    <p class="text-[11px] ${isUnlocked ? 'text-slate-300' : 'text-slate-600'}">${badge.desc}</p>
+                `;
+                container.appendChild(card);
+            });
+            refreshIcons();
+        }
+
+        // Leave Planner Functions
+        function saveNextLeave() {
+            const val = document.getElementById('nextLeaveInput').value.trim();
+            if (!val) return;
+            localStorage.setItem('khadmat_next_leave', val);
+            updateNextLeaveTicker();
+            showToast('تاریخ مرخصی ثبت شد');
+        }
+
+        function updateNextLeaveTicker() {
+            const val = localStorage.getItem('khadmat_next_leave');
+            if (!val) return;
+
+            const parts = val.split('/').map(Number);
+            if (parts.length === 3) {
+                const targetG = jalaliToGregorian(parts[0], parts[1], parts[2]);
+                const now = new Date();
+                const diffMs = targetG.getTime() - now.getTime();
+                
+                if (diffMs > 0) {
+                    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    document.getElementById('leaveCountdownBig').textContent = `${days} روز و ${hours} ساعت`;
+                    document.getElementById('leaveSubText').textContent = `تا تاریخ ${val} (مرخصی خانه)`;
+                } else {
+                    document.getElementById('leaveCountdownBig').textContent = 'زمان مرخصی';
+                    document.getElementById('leaveSubText').textContent = 'مرخصی شما آغاز شد';
+                }
+            }
+        }
+
+        // Gear Checklist Logic
+        function renderGearList() {
+            const list = JSON.parse(localStorage.getItem('khadmat_gear') || JSON.stringify(defaultGear));
+            const container = document.getElementById('gearListContainer');
+            container.innerHTML = '';
+
+            let completed = 0;
+            list.forEach(item => {
+                if (item.done) completed++;
+                const div = document.createElement('div');
+                div.className = `flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                    item.done ? 'bg-emerald-950/20 border-emerald-500/30 text-slate-200' : 'bg-slate-900 border-slate-800 text-slate-400'
+                }`;
+                div.innerHTML = `
+                    <div class="flex items-center gap-2" onclick="toggleGearItem(${item.id})">
+                        <i data-lucide="${item.done ? 'check-square' : 'square'}" class="${item.done ? 'text-emerald-400' : 'text-slate-600'} w-4 h-4"></i>
+                        <span class="${item.done ? 'line-through opacity-80' : ''}">${item.text}</span>
+                    </div>
+                    <button onclick="deleteGearItem(${item.id})" class="text-rose-400 hover:text-rose-300 text-xs px-1">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+
+            const pct = Math.round((completed / Math.max(1, list.length)) * 100);
+            document.getElementById('gearProgressText').textContent = `${pct}٪ کامل شد`;
+            refreshIcons();
+        }
+
+        function toggleGearItem(id) {
+            let list = JSON.parse(localStorage.getItem('khadmat_gear') || JSON.stringify(defaultGear));
+            list = list.map(item => item.id === id ? { ...item, done: !item.done } : item);
+            localStorage.setItem('khadmat_gear', JSON.stringify(list));
+            renderGearList();
+        }
+
+        function addGearItem() {
+            const text = document.getElementById('newGearInput').value.trim();
+            if (!text) return;
+            let list = JSON.parse(localStorage.getItem('khadmat_gear') || JSON.stringify(defaultGear));
+            list.push({ id: Date.now(), text, done: false });
+            localStorage.setItem('khadmat_gear', JSON.stringify(list));
+            document.getElementById('newGearInput').value = '';
+            renderGearList();
+        }
+
+        function deleteGearItem(id) {
+            let list = JSON.parse(localStorage.getItem('khadmat_gear') || JSON.stringify(defaultGear));
+            list = list.filter(item => item.id !== id);
+            localStorage.setItem('khadmat_gear', JSON.stringify(list));
+            renderGearList();
+        }
+
+        // Guard Duty Calculations
+        function calculateGuardShifts() {
+            const startTimeStr = document.getElementById('guardStartTime').value;
+            const shiftHours = parseFloat(document.getElementById('guardShiftHours').value);
+            const totalShifts = parseInt(document.getElementById('guardTotalShifts').value);
+
+            const [startH, startM] = startTimeStr.split(':').map(Number);
+            let currentTime = new Date();
+            currentTime.setHours(startH, startM, 0, 0);
+
+            const table = document.getElementById('guardTable');
+            table.innerHTML = '';
+
+            for (let i = 1; i <= totalShifts; i++) {
+                let shiftEnd = new Date(currentTime.getTime() + (shiftHours * 60 * 60 * 1000));
+                const formatTime = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                
+                const shiftBox = document.createElement('div');
+                shiftBox.className = 'flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-800 text-xs';
+                shiftBox.innerHTML = `
+                    <span class="font-bold text-amber-400">پاس نگهبانی شماره ${i}</span>
+                    <span class="text-slate-200 font-mono">${formatTime(currentTime)} الی ${formatTime(shiftEnd)}</span>
+                `;
+                table.appendChild(shiftBox);
+
+                let restEnd = new Date(shiftEnd.getTime() + (shiftHours * 2 * 60 * 60 * 1000));
+                const restBox = document.createElement('div');
+                restBox.className = 'flex justify-between items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/60 text-[11px] text-slate-400';
+                restBox.innerHTML = `
+                    <span>استراحت و آنکادر</span>
+                    <span class="font-mono text-slate-400">${formatTime(shiftEnd)} الی ${formatTime(restEnd)}</span>
+                `;
+                table.appendChild(restBox);
+
+                currentTime = restEnd;
+            }
+
+            document.getElementById('guardResultBox').classList.remove('hidden');
+        }
+
+        // Diary & Notes
+        function saveNote() {
+            const title = document.getElementById('noteTitle').value.trim();
+            const content = document.getElementById('noteContent').value.trim();
+            const category = document.getElementById('noteCategory').value;
+
+            if (!title || !content) return;
+
+            const notes = JSON.parse(localStorage.getItem('khadmat_notes') || '[]');
+            notes.unshift({ id: Date.now(), title, content, category, date: formatJalali(new Date()) });
+            localStorage.setItem('khadmat_notes', JSON.stringify(notes));
+
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+            renderNotes();
+            showToast('خاطره با موفقیت ثبت شد');
+        }
+
+        function deleteNote(id) {
+            let notes = JSON.parse(localStorage.getItem('khadmat_notes') || '[]');
+            notes = notes.filter(n => n.id !== id);
+            localStorage.setItem('khadmat_notes', JSON.stringify(notes));
+            renderNotes();
+        }
+
+        function renderNotes() {
+            const container = document.getElementById('notesContainer');
+            const notes = JSON.parse(localStorage.getItem('khadmat_notes') || '[]');
+            container.innerHTML = '';
+
+            if (notes.length === 0) {
+                container.innerHTML = `<div class="text-center text-xs text-slate-500 py-6">هنوز هیچ یادداشتی ثبت نکرده‌اید</div>`;
+                return;
+            }
+
+            notes.forEach(n => {
+                const item = document.createElement('div');
+                item.className = 'bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-2';
+                item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-xs text-emerald-400 flex items-center gap-1.5">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                            <span>${n.title}</span>
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-lg">${n.category}</span>
+                            <span class="text-[10px] text-slate-500">${n.date}</span>
+                            <button onclick="deleteNote(${n.id})" class="text-rose-400 hover:text-rose-300 text-xs px-1">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${n.content}</p>
+                `;
+                container.appendChild(item);
+            });
+            refreshIcons();
+        }
+
+        // Export & Import Data JSON
+        function exportDataJSON() {
+            const backup = {
+                settings: localStorage.getItem('khadmat_v2_data'),
+                notes: localStorage.getItem('khadmat_notes'),
+                gear: localStorage.getItem('khadmat_gear'),
+                nextLeave: localStorage.getItem('khadmat_next_leave')
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `khadmat_backup_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importDataJSON(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const backup = JSON.parse(e.target.result);
+                    if (backup.settings) localStorage.setItem('khadmat_v2_data', backup.settings);
+                    if (backup.notes) localStorage.setItem('khadmat_notes', backup.notes);
+                    if (backup.gear) localStorage.setItem('khadmat_gear', backup.gear);
+                    if (backup.nextLeave) localStorage.setItem('khadmat_next_leave', backup.nextLeave);
+                    alert('بازیابی اطلاعات با موفقیت انجام شد');
+                    location.reload();
+                } catch(err) {
+                    alert('فایل پشتیبان معتبر نیست');
+                }
+            };
+            fileReader.readAsText(event.target.files[0]);
+        }
+
+        // Share Card Modal
+        function openShareModal() {
+            document.getElementById('shareCardRank').textContent = document.getElementById('rankTitle').textContent;
+            document.getElementById('shareCardPercent').textContent = `${currentCalculatedData.percentage}%`;
+            document.getElementById('shareCardDaysLeft').textContent = `${currentCalculatedData.daysLeft} روز`;
+            document.getElementById('shareCardEndDate').textContent = document.getElementById('endDateDisp').textContent;
+            document.getElementById('shareCardQuote').textContent = document.getElementById('quoteText').textContent;
+            
+            document.getElementById('shareModal').classList.remove('hidden');
+            refreshIcons();
+        }
+
+        function closeShareModal() {
+            document.getElementById('shareModal').classList.add('hidden');
+        }
+
+        function downloadShareCard() {
+            const card = document.getElementById('shareCardContent');
+            html2canvas(card, { backgroundColor: '#060a12' }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'khadmat-status.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        function copyShareText() {
+            const text = `وضعیت خدمت سربازی من:\nپیشرفت: ${currentCalculatedData.percentage}٪\nمانده تا آزادی: ${currentCalculatedData.daysLeft} روز\nتاریخ ترخیص: ${document.getElementById('endDateDisp').textContent}\n\nپادگان دیجیتال`;
+            
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+            showToast('متن وضعیت در حافظه کپی شد');
+        }
+
+        function setRandomQuote() {
+            const q = quotes[Math.floor(Math.random() * quotes.length)];
+            document.getElementById('quoteText').textContent = q;
+        }
+
+        // Persistence
+        function saveState(data) {
+            localStorage.setItem('khadmat_v2_data', JSON.stringify(data));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('khadmat_v2_data');
+            if (saved) {
+                try {
+                    const d = JSON.parse(saved);
+                    // Self-healing check for broken year formats from previous version
+                    if (d.sy && d.sy >= 1390 && d.sy <= 1410) {
+                        document.getElementById('startYear').value = d.sy;
+                        if (d.sm) document.getElementById('startMonth').value = d.sm;
+                        if (d.sd) document.getElementById('startDay').value = d.sd;
+                        if (d.baseMonths) document.getElementById('baseMonths').value = d.baseMonths;
+                        if (d.extraDays !== undefined) document.getElementById('extraDays').value = d.extraDays;
+                        if (d.deductionDays !== undefined) document.getElementById('deductionDays').value = d.deductionDays;
+                        if (d.usedLeaves !== undefined) document.getElementById('usedLeaves').value = d.usedLeaves;
+                        return;
+                    }
+                } catch (e) {}
+            }
+            
+            // Default: 6 months ago initial state
+            const now = new Date();
+            const past6M = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+            const jPast = gregorianToJalali(past6M.getFullYear(), past6M.getMonth() + 1, past6M.getDate());
+            document.getElementById('startYear').value = jPast[0];
+            document.getElementById('startMonth').value = jPast[1];
+            document.getElementById('startDay').value = jPast[2];
+
+            const nextLeaveVal = localStorage.getItem('khadmat_next_leave');
+            if (nextLeaveVal) {
+                document.getElementById('nextLeaveInput').value = nextLeaveVal;
+            }
+        }
+
+        function resetData() {
+            if (confirm('آیا از پاک‌سازی تمام اطلاعات مطمئن هستید؟')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // App Entry Point
+        window.onload = function() {
+            initRadarCanvas();
+            initSelectors();
+            loadState();
+            calculateService();
+            renderNotes();
+            renderGearList();
+            
+            setInterval(updateLiveClock, 1000);
+            updateLiveClock();
+
+            refreshIcons();
+        };
+    </script>
+</body>
+</html>
+
+
